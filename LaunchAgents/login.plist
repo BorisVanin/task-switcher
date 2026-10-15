@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Starts TaskSwitcher at login, registered through SMAppService.agent(plistName:).
+  The extra argument is how the app knows it was started at login and not by the user.
+
+  Template: the build fills in the $(…) build settings and writes the result to
+  Contents/Library/LaunchAgents/<bundle id>.login.plist (see project.yml).
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER).login</string>
+	<key>BundleProgram</key>
+	<string>Contents/MacOS/$(EXECUTABLE_NAME)</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>Contents/MacOS/$(EXECUTABLE_NAME)</string>
+		<string>--launched-at-login</string>
+	</array>
+	<key>AssociatedBundleIdentifiers</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+</dict>
+</plist>

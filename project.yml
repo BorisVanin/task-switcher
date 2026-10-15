@@ -1,0 +1,81 @@
+# Task Switcher — XcodeGen spec. `make gen` generates TaskSwitcher.xcodeproj from it; the generated
+# project is not committed.
+#
+# Read from the environment at generate time (.envrc via direnv, see .envrc.default):
+#   DEVELOPMENT_TEAM     Apple Developer Team ID used for signing.
+#   PROJECT_IDENTIFIER   Bundle identifier of the app, e.g. com.example.TaskSwitcher. The Accessibility
+#                        permission, the settings and the login item are all tied to it.
+
+name: TaskSwitcher
+
+options:
+  developmentLanguage: en
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "27.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+targets:
+  TaskSwitcher:
+    type: application
+    platform: macOS
+    sources:
+      # A synced folder: Xcode picks up every file under TaskSwitcher/ by itself, including the
+      # Icon Composer app icon (AppIcon.icon).
+      - path: TaskSwitcher
+        type: syncedFolder
+      - path: LaunchAgents
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: Task Switcher
+        PRODUCT_BUNDLE_IDENTIFIER: ${PROJECT_IDENTIFIER}
+        MARKETING_VERSION: 1.0.2
+        CURRENT_PROJECT_VERSION: 14
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Task Switcher
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        # Not sandboxed: event taps that swallow keys, Accessibility control of other apps and the
+        # private WindowServer calls are all blocked in the sandbox (docs/architecture.md, §1).
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        OTHER_CODE_SIGN_FLAGS: --timestamp
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        SWIFT_OBJC_BRIDGING_HEADER: TaskSwitcher/Support/TaskSwitcher-Bridging-Header.h
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: Apple Development
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Developer ID Application
+    postBuildScripts:
+      # The login item's launch agent must carry the app's bundle identifier, so it is written from
+      # the template at build time (before signing) instead of being committed with one.
+      - name: Write Launch Agent
+        basedOnDependencyAnalysis: true
+        showEnvVars: false
+        inputFiles:
+          - $(SRCROOT)/LaunchAgents/login.plist
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Library/LaunchAgents/$(PRODUCT_BUNDLE_IDENTIFIER).login.plist
+        script: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$SCRIPT_OUTPUT_FILE_0")"
+          # $VAR without braces: XcodeGen would replace ${VAR} from its own environment.
+          sed -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/$PRODUCT_BUNDLE_IDENTIFIER/g" \
+              -e "s/\$(EXECUTABLE_NAME)/$EXECUTABLE_NAME/g" \
+              "$SCRIPT_INPUT_FILE_0" > "$SCRIPT_OUTPUT_FILE_0"
+          plutil -lint -s "$SCRIPT_OUTPUT_FILE_0"
+    scheme: {}

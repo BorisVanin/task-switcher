@@ -1,0 +1,19 @@
+# Design material, screenshots and downloaded third-party icons
+Artifacts/
+
+# Generated from project.yml by `make gen`
+TaskSwitcher.xcodeproj/
+
+# Build output
+dist/
+build/
+DerivedData/
+tmp-claude/
+
+# Local build/signing settings (direnv) — copy .envrc.default to .envrc
+.envrc
+
+# Xcode per-user state and Finder metadata
+xcuserdata/
+*.xcuserstate
+.DS_Store

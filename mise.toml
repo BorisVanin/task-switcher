@@ -1,0 +1,7 @@
+# Toolchain for this project, pinned for reproducible builds. Used through `mise exec` by the Makefile.
+
+[tools]
+# Generates TaskSwitcher.xcodeproj from project.yml.
+xcodegen = "2.45.4"
+# Writes the disk image and its Finder window layout from Distribution/dmg-settings.py.
+"pipx:dmgbuild" = "1.6.7"
