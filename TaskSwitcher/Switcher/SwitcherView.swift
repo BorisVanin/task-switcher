@@ -68,9 +68,15 @@ struct SwitcherView: View {
 
     private func cell(_ item: SwitcherItem, isSelected: Bool) -> some View {
         VStack(spacing: iconSize * 0.01) {
-            Image(nsImage: item.icon)
-                .resizable()
-                .interpolation(.high)
+            Group {
+                if let icon = item.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                } else {
+                    Color.clear
+                }
+            }
                 .frame(width: iconSize, height: iconSize)
                 .background {
                     if isSelected {

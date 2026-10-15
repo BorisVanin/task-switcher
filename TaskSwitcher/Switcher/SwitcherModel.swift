@@ -7,7 +7,8 @@ struct SwitcherItem: Identifiable {
     /// `nil` for the example items shown in Settings and on the disk image.
     let app: NSRunningApplication?
     let name: String
-    let icon: NSImage
+    /// `nil` until the icon is drawn (see `AppIconCache`); the cell stays empty until then.
+    var icon: NSImage?
 }
 
 /// State of one ⌘⇥ session. Shared by every panel, so all displays show the same selection.
@@ -25,13 +26,13 @@ final class SwitcherModel {
         items.indices.contains(selectedIndex) ? items[selectedIndex] : nil
     }
 
-    func load(_ apps: [NSRunningApplication], backward: Bool) {
+    func load(_ apps: [NSRunningApplication], icons: AppIconCache, backward: Bool) {
         items = apps.map {
             SwitcherItem(
                 id: $0.processIdentifier,
                 app: $0,
                 name: $0.localizedName ?? "",
-                icon: $0.icon ?? NSWorkspace.shared.icon(for: .application)
+                icon: icons.icon(for: $0.processIdentifier)
             )
         }
         // Like the Dock: ⌘⇥ starts on the previous app, ⌘⇧⇥ on the least recent one.
@@ -64,6 +65,13 @@ final class SwitcherModel {
             }
         model.selectedIndex = 0
         return model
+    }
+
+    /// An icon that was not ready when the session started.
+    func setIcon(_ icon: NSImage, for pid: pid_t) {
+        if let index = items.firstIndex(where: { $0.id == pid }) {
+            items[index].icon = icon
+        }
     }
 
     func selectNext() {

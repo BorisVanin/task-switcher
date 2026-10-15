@@ -17,6 +17,12 @@ final class SwitcherController: KeyboardHandler {
     init(tracker: AppTracker) {
         self.tracker = tracker
         model.onCommit = { [weak self] in self?.commit(restoreMinimized: false) }
+        tracker.icons.onLoad = { [weak self] pid, icon in self?.model.setIcon(icon, for: pid) }
+        // The first panel takes about 40 ms more to draw than later ones; pay that before the first ⌘⇥.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            self?.drawOnce()
+        }
     }
 
     func handleKeyDown(_ keyCode: Int, flags: CGEventFlags, isRepeat: Bool) -> Bool {
@@ -64,13 +70,17 @@ final class SwitcherController: KeyboardHandler {
         hidePanels()
     }
 
+    /// Runs inside the keyboard event tap, so it only reads what `AppTracker` already has: macOS switches
+    /// a tap off when it takes too long to answer.
     private func begin(backward: Bool) {
+        let pressed = ContinuousClock.now
         let apps = tracker.orderedApps()
         guard !apps.isEmpty else { return }
         isActive = true
-        model.load(apps, backward: backward)
+        model.load(apps, icons: tracker.icons, backward: backward)
         showTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.showDelay)
+            // Counted from the key press, so the work above happens during the pause instead of adding to it.
+            try? await Task.sleep(until: pressed + Self.showDelay)
             guard !Task.isCancelled else { return }
             self?.showPanels()
         }
@@ -81,7 +91,9 @@ final class SwitcherController: KeyboardHandler {
         let target = model.selected?.app
         isActive = false
         hidePanels()
-        if let target {
+        guard let target else { return }
+        // After the event tap has answered: switching can wait up to half a second on a slow app.
+        Task {
             AppActivator.activate(target, restoreMinimized: restoreMinimized)
         }
     }
@@ -111,6 +123,24 @@ final class SwitcherController: KeyboardHandler {
             panel.orderOut(nil)
         }
         isVisible = true
+    }
+
+    /// Draws the switcher once, invisibly, so the first ⌘⇥ is as quick as the ones after it.
+    private func drawOnce() {
+        guard !isActive, panels.isEmpty, let screen = NSScreen.main else { return }
+        model.load(tracker.orderedApps(), icons: tracker.icons, backward: false)
+        let panel = SwitcherPanel(model: model)
+        panels.append(panel)
+        panel.alphaValue = 0
+        panel.ignoresMouseEvents = true
+        panel.present(on: screen, maxIconSize: Preferences.maxIconSize)
+        Task {
+            if !isVisible {
+                panel.orderOut(nil)
+            }
+            panel.alphaValue = 1
+            panel.ignoresMouseEvents = false
+        }
     }
 
     private func hidePanels() {

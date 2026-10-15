@@ -1,41 +1,67 @@
 import AppKit
 
 /// Keeps regular (Dock-visible) apps in most-recently-used order, which is the order the switcher shows.
+///
+/// The list and the icons are kept up to date as apps launch, activate and quit, so ⌘⇥ only reads them.
+/// Asking macOS for every running process takes 15–20 ms, too long to do while handling a key press.
 final class AppTracker {
+    let icons = AppIconCache()
     private var recent: [pid_t] = []
+    private var regular: [NSRunningApplication] = []
     private var observers: [NSObjectProtocol] = []
 
     init() {
         recent = Self.initialOrder()
+        refresh()
 
         let center = NSWorkspace.shared.notificationCenter
+        observers.append(center.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        })
         observers.append(center.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] note in
             guard let pid = Self.pid(from: note) else { return }
-            MainActor.assumeIsolated { self?.moveToFront(pid) }
+            MainActor.assumeIsolated { self?.activated(pid) }
         })
         observers.append(center.addObserver(
             forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main
         ) { [weak self] note in
             guard let pid = Self.pid(from: note) else { return }
-            MainActor.assumeIsolated { self?.recent.removeAll { $0 == pid } }
+            MainActor.assumeIsolated { self?.terminated(pid) }
         })
     }
 
     func orderedApps() -> [NSRunningApplication] {
-        // TaskSwitcher itself is `.regular`, and so listed, only while its Settings window is open.
-        let running = NSWorkspace.shared.runningApplications.filter {
-            $0.activationPolicy == .regular && !$0.isTerminated
-        }
+        let running = regular.filter { !$0.isTerminated }
         let byPID = Dictionary(running.map { ($0.processIdentifier, $0) }, uniquingKeysWith: { first, _ in first })
         let known = Set(recent)
         return recent.compactMap { byPID[$0] } + running.filter { !known.contains($0.processIdentifier) }
     }
 
-    private func moveToFront(_ pid: pid_t) {
+    /// TaskSwitcher itself is `.regular`, and so listed, only while its Settings window is open.
+    private func refresh() {
+        regular = NSWorkspace.shared.runningApplications.filter {
+            $0.activationPolicy == .regular && !$0.isTerminated
+        }
+        icons.prepare(regular)
+    }
+
+    private func activated(_ pid: pid_t) {
         recent.removeAll { $0 == pid }
         recent.insert(pid, at: 0)
+        // An app can become regular after launch (TaskSwitcher itself does when Settings opens).
+        if !regular.contains(where: { $0.processIdentifier == pid }) {
+            refresh()
+        }
+    }
+
+    private func terminated(_ pid: pid_t) {
+        recent.removeAll { $0 == pid }
+        regular.removeAll { $0.processIdentifier == pid }
+        icons.remove(pid)
     }
 
     nonisolated private static func pid(from note: Notification) -> pid_t? {

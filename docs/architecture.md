@@ -54,7 +54,8 @@ including **pinning it to one or several selected monitors at once**.
 | `App/TerminationGuard.swift` | Restores the Dock's ⌘⇥ on SIGTERM, SIGINT and SIGHUP. |
 | `System/NativeSwitcher.swift` + `Support/TaskSwitcher-Bridging-Header.h` | Private symbolic-hot-key API. |
 | `System/KeyboardInterceptor.swift` | `CGEventTap`. Re-enables itself if the system disables it on timeout. |
-| `System/AppTracker.swift` | Most-recently-used order of regular apps. |
+| `System/AppTracker.swift` | Most-recently-used order of regular apps. The list is kept current as apps launch, activate and quit, so ⌘⇥ never asks macOS for every process (15–20 ms). |
+| `System/AppIconCache.swift` | App icons, fetched and drawn into bitmaps on a background thread when an app is first seen. Fetching an icon can take over a second when macOS loads it afresh; a cell stays empty until its icon is ready. |
 | `System/AppActivator.swift` | Brings the chosen app forward, including apps without open windows. With ⌥ held, also restores a minimized window. |
 | `System/Permissions.swift`, `System/LoginItem.swift` | Accessibility prompt and status. Login item: a launch agent registered through `SMAppService`, which passes `--launched-at-login`. |
 | `Displays/*` | Placement modes, stable display identity, choosing the screen. |
@@ -65,7 +66,7 @@ including **pinning it to one or several selected monitors at once**.
 
 | Input | Action |
 |---|---|
-| ⌘⇥ / ⌘⇧⇥ | Start a session. The previous app is selected (⌘⇧⇥ selects the least recent). A quick tap switches without showing the panel (100 ms delay before it appears). |
+| ⌘⇥ / ⌘⇧⇥ | Start a session. The previous app is selected (⌘⇧⇥ selects the least recent). A quick tap switches without showing the panel: it appears 100 ms after the key press. The panel is drawn once, invisibly, a second after start, so the first ⌘⇥ is as quick as later ones. |
 | Tab / ⇧Tab, ← →, `` ` `` (or the ISO key above Tab) | Move the selection. |
 | Release ⌘ | Activate the selected app. Holding ⌥ also restores a minimized window. |
 | Return | Activate now. |
@@ -173,7 +174,10 @@ Why this approach rather than the alternatives:
 2. **Clean exit.** Quit, `applicationWillTerminate`, SIGTERM, SIGINT and SIGHUP all re-enable the Dock's hot keys.
 3. **Crash.** The setting lives only in the WindowServer session, so a logout always restores it. Without a logout,
    `"Task Switcher" --restore-native-switcher` re-enables it right away.
-4. **Tap timeouts.** If the system disables the tap (`tapDisabledByTimeout` or `tapDisabledByUserInput`), it is re-enabled in the callback.
+4. **Tap timeouts.** macOS switches a tap off when its callback takes too long (about a second), and key events sent meanwhile are lost.
+   The callback therefore only reads prepared state: the app list and icons are ready in advance, and switching to the chosen app
+   runs after the callback has returned. If the tap is switched off anyway (`tapDisabledByTimeout` or `tapDisabledByUserInput`), it is
+   re-enabled in the callback, and the current modifier keys are read so a release of ⌘ missed meanwhile still ends the session.
 
 ### 3.2 Installation
 

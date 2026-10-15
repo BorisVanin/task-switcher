@@ -57,6 +57,8 @@ final class KeyboardInterceptor {
             if let tap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
+            // Key events were missed while the tap was off; the release of ⌘ may be one of them.
+            handler.handleFlagsChanged(CGEventSource.flagsState(.combinedSessionState))
             return false
         case .keyDown:
             return handler.handleKeyDown(
