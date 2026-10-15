@@ -1,5 +1,11 @@
 # Task Switcher
 
+> [!IMPORTANT]
+> **This entire project was written by Claude (Anthropic's Claude Opus 5.5) working in Claude Code.**
+> Every line of source code, the build setup, the scripts, the app icon, the docs and this README were
+> written by the model under Boris Vanin's direction. Keep that in mind when reading, reusing or
+> auditing the code.
+
 A replacement for the macOS ⌘⇥ app switcher that can show on the displays you choose. The system
 switcher always appears on the display with the Dock; Task Switcher can pin it to one or several
 monitors, or follow the mouse pointer or the active window. Otherwise it behaves like the system one.
