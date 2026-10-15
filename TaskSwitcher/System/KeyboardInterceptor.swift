@@ -52,8 +52,10 @@ final class KeyboardInterceptor {
     }
 
     fileprivate func process(_ type: CGEventType, _ event: CGEvent) -> Bool {
+        SwitcherTiming.eventTimestamp = event.timestamp
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            SwitcherTiming.mark("event tap was switched off by macOS (\(type == .tapDisabledByTimeout ? "timeout" : "user input")), switching it back on")
             if let tap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }

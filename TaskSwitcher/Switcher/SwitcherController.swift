@@ -74,14 +74,19 @@ final class SwitcherController: KeyboardHandler {
     /// a tap off when it takes too long to answer.
     private func begin(backward: Bool) {
         let pressed = ContinuousClock.now
-        let apps = tracker.orderedApps()
+        SwitcherTiming.sessionStarted()
+        let apps = SwitcherTiming.measure("collect running apps") { tracker.orderedApps() }
         guard !apps.isEmpty else { return }
         isActive = true
-        model.load(apps, icons: tracker.icons, backward: backward)
+        SwitcherTiming.measure("load names and icons of \(apps.count) apps") {
+            model.load(apps, icons: tracker.icons, backward: backward)
+        }
+        SwitcherTiming.mark("icons not drawn yet: \(model.items.filter { $0.icon == nil }.count)")
         showTask = Task { [weak self] in
             // Counted from the key press, so the work above happens during the pause instead of adding to it.
             try? await Task.sleep(until: pressed + Self.showDelay)
             guard !Task.isCancelled else { return }
+            SwitcherTiming.mark("planned 100 ms pause over")
             self?.showPanels()
         }
     }
@@ -90,11 +95,14 @@ final class SwitcherController: KeyboardHandler {
         guard isActive else { return }
         let target = model.selected?.app
         isActive = false
+        SwitcherTiming.mark("⌘ released")
         hidePanels()
         guard let target else { return }
         // After the event tap has answered: switching can wait up to half a second on a slow app.
         Task {
-            AppActivator.activate(target, restoreMinimized: restoreMinimized)
+            SwitcherTiming.measure("switch to \(target.localizedName ?? "?")") {
+                AppActivator.activate(target, restoreMinimized: restoreMinimized)
+            }
         }
     }
 
@@ -112,13 +120,18 @@ final class SwitcherController: KeyboardHandler {
     /// One panel per target display, all driven by the same model.
     private func showPanels() {
         guard isActive else { return }
-        let screens = DisplayLocator.screens(for: Preferences.placement, pinned: Preferences.pinnedDisplays)
+        let screens = SwitcherTiming.measure("choose displays") {
+            DisplayLocator.screens(for: Preferences.placement, pinned: Preferences.pinnedDisplays)
+        }
         while panels.count < screens.count {
             panels.append(SwitcherPanel(model: model))
         }
         for (panel, screen) in zip(panels, screens) {
-            panel.present(on: screen, maxIconSize: Preferences.maxIconSize)
+            SwitcherTiming.measure("draw and show the switcher on \(screen.localizedName)") {
+                panel.present(on: screen, maxIconSize: Preferences.maxIconSize)
+            }
         }
+        DispatchQueue.main.async { SwitcherTiming.mark("switcher on screen, main thread free again") }
         for panel in panels.dropFirst(screens.count) {
             panel.orderOut(nil)
         }
