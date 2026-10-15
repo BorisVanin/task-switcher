@@ -82,6 +82,48 @@ This builds a Developer ID signed, notarized and stapled `dist/TaskSwitcher-<ver
 **Developer ID Application** certificate in your keychain and `NOTARY_PROFILE` in `.envrc`. The steps
 are described in [docs/architecture.md](docs/architecture.md#making-the-disk-image-make-dmg).
 
+## Learned from
+
+### Open-source projects
+
+- [AltTab](https://github.com/lwouis/alt-tab-macos): how a third-party switcher takes ⌘⇥ over from the
+  Dock (`CGSSetSymbolicHotKeyEnabled`), brings an app forward with the private SkyLight call
+  `_SLPSSetFrontProcessWithOptions`, and finds windows on other Spaces through the WindowServer.
+  The techniques came from reading its source; no code was copied.
+- [CGSInternal](https://github.com/NUIKit/CGSInternal): "a collection of private CoreGraphics and SkyLight
+  routines", used for the declarations of the symbolic hot keys
+  ([CGSHotKeys.h](https://github.com/NUIKit/CGSInternal/blob/master/CGSHotKeys.h)).
+
+### Apple documentation
+
+Activation of other apps, and switching to apps in full screen:
+
+- [AppKit release notes for macOS 14](https://developer.apple.com/documentation/macos-release-notes/appkit-release-notes-for-macos-14) (App Activation)
+- [`NSRunningApplication.activate(from:options:)`](https://developer.apple.com/documentation/appkit/nsrunningapplication/activate(from:options:)),
+  [`activate(options:)`](https://developer.apple.com/documentation/appkit/nsrunningapplication/activate(options:))
+- [`NSApplication.activate()`](https://developer.apple.com/documentation/appkit/nsapplication/activate()),
+  [`yieldActivation(to:)`](https://developer.apple.com/documentation/appkit/nsapplication/yieldactivation(to:)),
+  [`ActivationOptions`](https://developer.apple.com/documentation/appkit/nsapplication/activationoptions)
+- [`NSWorkspace.openApplication(at:configuration:completionHandler:)`](https://developer.apple.com/documentation/appkit/nsworkspace/openapplication(at:configuration:completionhandler:)),
+  [`OpenConfiguration.activates`](https://developer.apple.com/documentation/appkit/nsworkspace/openconfiguration/activates)
+
+Starting at login:
+
+- [`SMAppService`](https://developer.apple.com/documentation/servicemanagement/smappservice),
+  [`agent(plistName:)`](https://developer.apple.com/documentation/servicemanagement/smappservice/agent(plistname:)),
+  [`unregister()`](https://developer.apple.com/documentation/servicemanagement/smappservice/unregister()),
+  [`status`](https://developer.apple.com/documentation/servicemanagement/smappservice/status-swift.property)
+- [Updating helper executables from earlier versions of macOS](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos)
+- [Manage login items and background tasks on Mac](https://support.apple.com/guide/deployment/manage-login-items-background-tasks-mac-depdca572563/web) (Apple Platform Deployment)
+
+Apple Developer Forums threads:
+
+- [Accessibility API - Access kAXDocumentAttribute of hidden fullscreen windows or tabbed documents](https://developer.apple.com/forums/thread/121114): full-screen windows are missing from an app's Accessibility window list
+- [General > Login Items > Allow in the Background](https://developer.apple.com/forums/thread/712335): what happens to a login item when its app is deleted
+
+Every other API the app uses is listed with a link to its documentation in
+[docs/architecture.md](docs/architecture.md#5-api-inventory).
+
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE). © 2026 Boris Vanin.
