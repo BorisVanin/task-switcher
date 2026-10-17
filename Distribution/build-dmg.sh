@@ -16,7 +16,8 @@ BACKGROUND_DIR="${WORK}/background"
 # 1. Distribution-signed app ----------------------------------------------------
 app="$("$(dirname "$0")/export-app.sh")"
 VERSION="$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$app/Contents/Info.plist")"
-DMG="${DIST_DIR}/TaskSwitcher-${VERSION}.dmg"
+BUILD="$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$app/Contents/Info.plist")"
+DMG="${DIST_DIR}/TaskSwitcher-${VERSION}-${BUILD}.dmg"
 
 # 2. Window background: the same switcher example as in Settings, 1x + 2x in one TIFF ----
 log "drawing the window background"

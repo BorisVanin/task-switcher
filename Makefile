@@ -2,7 +2,7 @@
 #
 #   make        generate TaskSwitcher.xcodeproj from project.yml (same as `make gen`)
 #   make open   generate, then open the project in Xcode
-#   make dmg    Developer ID signed, notarized and stapled dist/TaskSwitcher-<version>.dmg
+#   make dmg    Developer ID signed, notarized and stapled dist/TaskSwitcher-<version>-<build>.dmg
 #
 # Needs DEVELOPMENT_TEAM and PROJECT_IDENTIFIER in the environment (.envrc via direnv — see
 # .envrc.default). `make dmg` also needs NOTARY_PROFILE and the "Developer ID Application" certificate

@@ -181,7 +181,7 @@ Why this approach rather than the alternatives:
 
 ### 3.2 Installation
 
-`Distribution/build-dmg.sh` builds `TaskSwitcher-<version>.dmg`. Opening it mounts a disk named TaskSwitcher, which shows the app icon:
+`Distribution/build-dmg.sh` builds `TaskSwitcher-<version>-<build>.dmg`. Opening it mounts a disk named TaskSwitcher, which shows the app icon:
 the volume carries `.VolumeIcon.icns`, copied from the built app, and the Finder custom-icon flag. On the disk are
 `Task Switcher.app` and a shortcut to `/Applications`. There is no installer and no administrator password.
 

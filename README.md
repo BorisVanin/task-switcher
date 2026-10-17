@@ -78,7 +78,7 @@ starting the app again is how you get back to Settings.
 make dmg
 ```
 
-This builds a Developer ID signed, notarized and stapled `dist/TaskSwitcher-<version>.dmg`. It needs the
+This builds a Developer ID signed, notarized and stapled `dist/TaskSwitcher-<version>-<build>.dmg`. It needs the
 **Developer ID Application** certificate in your keychain and `NOTARY_PROFILE` in `.envrc`. The steps
 are described in [docs/architecture.md](docs/architecture.md#making-the-disk-image-make-dmg).
 

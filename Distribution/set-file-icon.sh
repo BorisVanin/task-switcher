@@ -2,7 +2,7 @@
 #
 # Give the finished .dmg file the app icon in Finder.
 #
-#   set-file-icon.sh dist/TaskSwitcher-1.0.dmg
+#   set-file-icon.sh dist/TaskSwitcher-1.0.2-17.dmg
 #
 # Runs last, after notarize.sh: the icon is Finder metadata on the file (a resource fork and the
 # custom-icon flag), outside the signed and stapled contents. It survives AirDrop, Finder copies and
