@@ -27,3 +27,12 @@ The build number (`CURRENT_PROJECT_VERSION` in `project.yml`) identifies one bui
 - Say the new number when you hand the build over.
 - After changing it, regenerate the project (`make`) so Xcode picks it up.
 - Change the version (`MARKETING_VERSION`) only when asked.
+
+## Releases
+
+Read by the `release` skill.
+
+- Release command: `make dmg`, run in the project folder. It writes `dist/TaskSwitcher-<version>-<build>.dmg`.
+- Version: `MARKETING_VERSION` (three parts) and build number `CURRENT_PROJECT_VERSION`, both in `project.yml`.
+- The skill may run `make dmg` on this Mac itself: signing and notarization use the maintainer's keychain.
+- Tag `v<version>`, one release per version. The build number stays out of the tag.
