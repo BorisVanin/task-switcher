@@ -2,7 +2,7 @@
 #
 # Notarize + staple a finished artifact so it opens without warnings on other Macs.
 #
-#   notarize.sh dist/TaskSwitcher-1.0.dmg
+#   notarize.sh dist/TaskSwitcher-1.0.2-17.dmg
 #
 # Signing proves who built it; notarization is Apple's separate check that Gatekeeper wants on every
 # other Mac. This submits the artifact, waits for the result, staples the ticket (so it also verifies
