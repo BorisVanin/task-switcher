@@ -18,6 +18,8 @@ final class SwitcherController: KeyboardHandler {
         self.tracker = tracker
         model.onCommit = { [weak self] in self?.commit(restoreMinimized: false) }
         tracker.icons.onLoad = { [weak self] pid, icon in self?.model.setIcon(icon, for: pid) }
+        tracker.onLaunch = { [weak self] app in self?.appLaunched(app) }
+        tracker.onTerminate = { [weak self] pid in self?.appTerminated(pid) }
         // The first panel takes about 40 ms more to draw than later ones; pay that before the first ⌘⇥.
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))
@@ -101,10 +103,25 @@ final class SwitcherController: KeyboardHandler {
     private func quitSelected() {
         guard let item = model.selected else { return }
         item.app?.terminate()
-        model.remove(item.id)
+        appTerminated(item.id)
+    }
+
+    /// An app quit while the switcher is open (⌘Q just before ⌘⇥, or Q in the switcher): it leaves the list.
+    private func appTerminated(_ pid: pid_t) {
+        guard isActive, model.items.contains(where: { $0.id == pid }) else { return }
+        model.remove(pid)
         if model.items.isEmpty {
             cancel()
         } else if isVisible {
+            showPanels()
+        }
+    }
+
+    /// An app finished launching while the switcher is open: it joins the end of the list.
+    private func appLaunched(_ app: NSRunningApplication) {
+        guard isActive else { return }
+        model.append(app, icons: tracker.icons)
+        if isVisible {
             showPanels()
         }
     }

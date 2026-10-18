@@ -4,8 +4,14 @@ import AppKit
 ///
 /// The list and the icons are kept up to date as apps launch, activate and quit, so ⌘⇥ only reads them.
 /// Asking macOS for every running process takes 15–20 ms, too long to do while handling a key press.
+///
+/// macOS announces launches and quits through `NSWorkspace.shared.notificationCenter`; nothing is polled.
 final class AppTracker {
     let icons = AppIconCache()
+    /// A regular app finished launching, so it belongs in the list.
+    var onLaunch: (NSRunningApplication) -> Void = { _ in }
+    /// An app quit (or was killed) and is gone from the list.
+    var onTerminate: (pid_t) -> Void = { _ in }
     private var recent: [pid_t] = []
     private var regular: [NSRunningApplication] = []
     private var observers: [NSObjectProtocol] = []
@@ -17,8 +23,9 @@ final class AppTracker {
         let center = NSWorkspace.shared.notificationCenter
         observers.append(center.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
+        ) { [weak self] note in
+            let pid = Self.pid(from: note)
+            MainActor.assumeIsolated { self?.launched(pid) }
         })
         observers.append(center.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -49,6 +56,13 @@ final class AppTracker {
         icons.prepare(regular)
     }
 
+    private func launched(_ pid: pid_t?) {
+        refresh()
+        if let app = regular.first(where: { $0.processIdentifier == pid }) {
+            onLaunch(app)
+        }
+    }
+
     private func activated(_ pid: pid_t) {
         recent.removeAll { $0 == pid }
         recent.insert(pid, at: 0)
@@ -62,6 +76,7 @@ final class AppTracker {
         recent.removeAll { $0 == pid }
         regular.removeAll { $0.processIdentifier == pid }
         icons.remove(pid)
+        onTerminate(pid)
     }
 
     nonisolated private static func pid(from note: Notification) -> pid_t? {
