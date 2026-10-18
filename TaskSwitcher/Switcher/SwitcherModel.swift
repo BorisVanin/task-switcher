@@ -27,17 +27,25 @@ final class SwitcherModel {
     }
 
     func load(_ apps: [NSRunningApplication], icons: AppIconCache, backward: Bool) {
-        items = apps.map {
-            SwitcherItem(
-                id: $0.processIdentifier,
-                app: $0,
-                name: $0.localizedName ?? "",
-                icon: icons.icon(for: $0.processIdentifier)
-            )
-        }
+        items = apps.map { Self.item(for: $0, icons: icons) }
         // Like the Dock: ⌘⇥ starts on the previous app, ⌘⇧⇥ on the least recent one.
         selectedIndex = backward ? max(items.count - 1, 0) : min(1, max(items.count - 1, 0))
         mouseOrigin = NSEvent.mouseLocation
+    }
+
+    /// An app that launched during the session goes last, like one that was never activated.
+    func append(_ app: NSRunningApplication, icons: AppIconCache) {
+        guard !items.contains(where: { $0.id == app.processIdentifier }) else { return }
+        items.append(Self.item(for: app, icons: icons))
+    }
+
+    private static func item(for app: NSRunningApplication, icons: AppIconCache) -> SwitcherItem {
+        SwitcherItem(
+            id: app.processIdentifier,
+            app: app,
+            name: app.localizedName ?? "",
+            icon: icons.icon(for: app.processIdentifier)
+        )
     }
 
     /// Apps for the pictures of the switcher (Settings, the disk image background) — the same set every
@@ -84,8 +92,13 @@ final class SwitcherModel {
         selectedIndex = (selectedIndex - 1 + items.count) % items.count
     }
 
+    /// The selection stays on the same app; if that app is the one removed, it moves to the next one.
     func remove(_ id: pid_t) {
-        items.removeAll { $0.id == id }
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items.remove(at: index)
+        if index < selectedIndex {
+            selectedIndex -= 1
+        }
         selectedIndex = min(selectedIndex, max(items.count - 1, 0))
     }
 
