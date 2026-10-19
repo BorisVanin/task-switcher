@@ -6,15 +6,19 @@ import AppKit
 /// Asking macOS for every running process takes 15–20 ms, too long to do while handling a key press.
 ///
 /// macOS announces launches and quits through `NSWorkspace.shared.notificationCenter`; nothing is polled.
+/// An app can also change its activation policy while it runs: a menu-bar app that opens a window becomes
+/// regular, and one that closes its last window goes back to accessory and leaves the Dock. There is no
+/// notification for that, so the policy of every running app is observed with KVO.
 final class AppTracker {
     let icons = AppIconCache()
-    /// A regular app finished launching, so it belongs in the list.
-    var onLaunch: (NSRunningApplication) -> Void = { _ in }
-    /// An app quit (or was killed) and is gone from the list.
-    var onTerminate: (pid_t) -> Void = { _ in }
+    /// A regular app finished launching, or a running app became regular, so it belongs in the list.
+    var onAdd: (NSRunningApplication) -> Void = { _ in }
+    /// An app quit (or was killed), or stopped being regular, and is gone from the list.
+    var onRemove: (pid_t) -> Void = { _ in }
     private var recent: [pid_t] = []
     private var regular: [NSRunningApplication] = []
     private var observers: [NSObjectProtocol] = []
+    private var policyObservers: [pid_t: NSKeyValueObservation] = [:]
 
     init() {
         recent = Self.initialOrder()
@@ -50,16 +54,16 @@ final class AppTracker {
 
     /// TaskSwitcher itself is `.regular`, and so listed, only while its Settings window is open.
     private func refresh() {
-        regular = NSWorkspace.shared.runningApplications.filter {
-            $0.activationPolicy == .regular && !$0.isTerminated
-        }
+        let running = NSWorkspace.shared.runningApplications.filter { !$0.isTerminated }
+        regular = running.filter { $0.activationPolicy == .regular }
         icons.prepare(regular)
+        observePolicy(of: running)
     }
 
     private func launched(_ pid: pid_t?) {
         refresh()
         if let app = regular.first(where: { $0.processIdentifier == pid }) {
-            onLaunch(app)
+            onAdd(app)
         }
     }
 
@@ -75,8 +79,36 @@ final class AppTracker {
     private func terminated(_ pid: pid_t) {
         recent.removeAll { $0 == pid }
         regular.removeAll { $0.processIdentifier == pid }
+        policyObservers[pid] = nil
         icons.remove(pid)
-        onTerminate(pid)
+        onRemove(pid)
+    }
+
+    private func observePolicy(of running: [NSRunningApplication]) {
+        let pids = Set(running.map(\.processIdentifier))
+        policyObservers = policyObservers.filter { pids.contains($0.key) }
+        for app in running where policyObservers[app.processIdentifier] == nil {
+            let pid = app.processIdentifier
+            policyObservers[pid] = app.observe(\.activationPolicy) { [weak self] _, _ in
+                // KVO calls back on whichever thread applied the change.
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { self?.policyChanged(pid) }
+                }
+            }
+        }
+    }
+
+    /// An app joined or left the Dock: it joins or leaves the list the same way.
+    private func policyChanged(_ pid: pid_t) {
+        let wasListed = regular.contains { $0.processIdentifier == pid }
+        refresh()
+        let app = regular.first { $0.processIdentifier == pid }
+        if let app, !wasListed {
+            onAdd(app)
+        } else if app == nil, wasListed {
+            icons.remove(pid)
+            onRemove(pid)
+        }
     }
 
     nonisolated private static func pid(from note: Notification) -> pid_t? {

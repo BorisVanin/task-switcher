@@ -54,7 +54,7 @@ including **pinning it to one or several selected monitors at once**.
 | `App/TerminationGuard.swift` | Restores the Dock's ⌘⇥ on SIGTERM, SIGINT and SIGHUP. |
 | `System/NativeSwitcher.swift` + `Support/TaskSwitcher-Bridging-Header.h` | Private symbolic-hot-key API. |
 | `System/KeyboardInterceptor.swift` | `CGEventTap`. Re-enables itself if the system disables it on timeout. |
-| `System/AppTracker.swift` | Most-recently-used order of regular apps. The list is kept current as apps launch, activate and quit, so ⌘⇥ never asks macOS for every process (15–20 ms). |
+| `System/AppTracker.swift` | Most-recently-used order of regular apps. The list is kept current as apps launch, activate, quit and change their activation policy (a menu-bar app that opens or closes its window; observed with KVO, as macOS sends no notification for it), so ⌘⇥ never asks macOS for every process (15–20 ms). |
 | `System/AppIconCache.swift` | App icons, fetched and drawn into bitmaps on a background thread when an app is first seen. Fetching an icon can take over a second when macOS loads it afresh; a cell stays empty until its icon is ready. |
 | `System/AppActivator.swift` | Brings the chosen app forward, including apps without open windows. With ⌥ held, also restores a minimized window. |
 | `System/Permissions.swift`, `System/LoginItem.swift` | Accessibility prompt and status. Login item: a launch agent registered through `SMAppService`, which passes `--launched-at-login`. |
