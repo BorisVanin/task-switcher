@@ -83,10 +83,16 @@ enum AppActivator {
         }
     }
 
+    /// Real windows only. Finder lists its desktop here too (role AXScrollArea); counting it would send
+    /// Finder without open windows down the AXFrontmost path, which silently does nothing for it.
     private static func windows(of element: AXUIElement) -> [AXUIElement] {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXWindowsAttribute as CFString, &value) == .success else { return [] }
-        return value as? [AXUIElement] ?? []
+        return (value as? [AXUIElement] ?? []).filter { window in
+            var role: CFTypeRef?
+            return AXUIElementCopyAttributeValue(window, kAXRoleAttribute as CFString, &role) == .success
+                && role as? String == kAXWindowRole
+        }
     }
 
     private static func isMinimized(_ window: AXUIElement) -> Bool {
