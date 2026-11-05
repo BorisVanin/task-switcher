@@ -12,9 +12,11 @@ enum SwitcherLayout {
     static let cellSpacing: CGFloat = 0.05
     static let outerPadding: CGFloat = 0.17
     static let bottomPadding: CGFloat = 0.10
-    /// The selection tile covers almost the whole icon frame.
-    static let highlightSize: CGFloat = 0.98
-    static let highlightCornerRadius: CGFloat = 0.2
+    /// The selection tile sits close around the icon artwork, with corners concentric with the icon's.
+    /// Measured from a screenshot of the system switcher.
+    static let highlightSize: CGFloat = 0.925
+    static let highlightCornerRadius: CGFloat = 0.245
+    static let panelCornerRadius: CGFloat = 0.38
     /// Share of the display width the panel may take before icons shrink.
     static let maxWidthFraction: CGFloat = 0.92
 
@@ -25,10 +27,9 @@ enum SwitcherLayout {
         return max(minIconSize, min(maxIconSize, fitting.rounded(.down)))
     }
 
-    /// The panel is a rounded rectangle, not a capsule. Its corners are concentric with the selection tile:
-    /// the tile's radius plus the distance from the tile to the panel edge.
+    /// The panel is a rounded rectangle, not a capsule.
     static func panelCornerRadius(for iconSize: CGFloat) -> CGFloat {
-        iconSize * (highlightCornerRadius + outerPadding + (1 - highlightSize) / 2)
+        iconSize * panelCornerRadius
     }
 
     static func labelFontSize(for iconSize: CGFloat) -> CGFloat {
@@ -100,17 +101,33 @@ struct SwitcherView: View {
     }
 }
 
-/// The system's selection: a solid, lighter grey tile behind the icon with a barely visible rim.
+/// The system's selection: a solid tile behind the icon. In the dark theme it is a lighter grey with a barely
+/// visible rim; in the light theme a darker grey with no rim.
 /// Drawn rather than made of real glass: glass on top of the glass panel renders inconsistently.
 private struct SelectionTile: View {
     let size: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.switcherSymmetricSelection) private var symmetric
+
+    /// The tile must leave a whole number of points on each side of the icon frame. With a half-point gap
+    /// (a 62 pt tile on a 67 pt icon, say) a 1x display has to put the extra pixel on one side.
+    private var tileSize: CGFloat {
+        let exact = size * SwitcherLayout.highlightSize
+        return symmetric ? size - 2 * ((size - exact) / 2).rounded() : exact
+    }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: size * SwitcherLayout.highlightCornerRadius, style: .continuous)
-        shape
-            .fill(.white.opacity(0.22))
-            .overlay(shape.strokeBorder(.white.opacity(0.12), lineWidth: 1))
-            .frame(width: size * SwitcherLayout.highlightSize, height: size * SwitcherLayout.highlightSize)
+        Group {
+            if colorScheme == .light {
+                shape.fill(.black.opacity(0.21))
+            } else {
+                shape
+                    .fill(.white.opacity(0.22))
+                    .overlay(shape.strokeBorder(.white.opacity(0.12), lineWidth: 1))
+            }
+        }
+        .frame(width: tileSize, height: tileSize)
     }
 }
 
@@ -118,6 +135,8 @@ extension EnvironmentValues {
     /// Draw the panel without system materials. Glass and behind-window blur only exist in a live window,
     /// so a picture rendered with `ImageRenderer` (the disk image background) needs a plain look-alike.
     @Entry var switcherStaticBackground = false
+    /// Keep the selection tile exactly centred on its icon. Used by the preview at the top of Settings.
+    @Entry var switcherSymmetricSelection = false
 }
 
 /// Rounded rectangle like the system panel: Liquid Glass on macOS 26 and later, a HUD blur with a rim before that.
@@ -132,7 +151,8 @@ private struct PanelBackground: View {
                 .fill(Color(white: 0.1).opacity(0.55))
                 .overlay(shape.strokeBorder(.white.opacity(0.22), lineWidth: 1))
         } else if #available(macOS 26.0, *) {
-            Color.clear.glassEffect(.regular, in: shape)
+            // Regular glass is nearly opaque white in the light theme; the system panel lets far more through.
+            Color.clear.glassEffect(.clear, in: shape)
         } else {
             VisualEffectBackground()
                 .clipShape(shape)

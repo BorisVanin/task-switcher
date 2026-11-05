@@ -15,6 +15,7 @@ struct SwitcherPreview: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
                 SwitcherView(model: model, iconSize: iconSize(for: proxy.size))
+                    .environment(\.switcherSymmetricSelection, true)
                     .padding(.top, Self.titleBarHeight)
             }
         }
