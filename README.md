@@ -72,6 +72,27 @@ starting the app again is how you get back to Settings.
 - **Login item:** only a copy started from `/Applications` registers itself to start at login, so
   debug builds never end up in Login Items.
 
+### When the macOS switcher comes back on its own
+
+If ⌘⇥ shows the macOS switcher again and Settings says "⌘⇥ is handled by macOS", although
+Accessibility is granted, some app has **Secure Keyboard Entry** on. While it is on, macOS hides every
+keystroke from other apps, so Task Switcher can't see ⌘⇥. It hands the shortcut to the Dock so that ⌘⇥
+keeps working, and takes it back within a second once Secure Keyboard Entry is off.
+
+The usual cause is a **browser window with a password field**. Browsers turn Secure Keyboard Entry on
+while a password field has focus. Google Chrome is known to leave it on afterwards, as long as a page
+with a login form stays open, even in a background window.
+
+- **Fix:** close the tab with the login or password page, or quit the browser.
+- **Find the app holding it:**
+
+  ```sh
+  ioreg -l -w 0 | grep -o '"kCGSSessionSecureInputPID"=[0-9]*'
+  ps -o command= -p <PID from above>
+  ```
+
+- Terminal and iTerm2 have a **Secure Keyboard Entry** menu item that has the same effect while it is on.
+
 ## Building a disk image
 
 ```sh
